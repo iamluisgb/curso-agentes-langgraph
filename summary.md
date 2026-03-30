@@ -134,7 +134,7 @@ Adoptar una arquitectura modular evita fricciones al orquestar **múltiples age
 
 - Reemplaza tareas dispersas que antes se hacían con **pip**, pip tools, **Poetry** y **Virtualenv**.
 - Gestiona **ambientes** y **dependencias** de forma ligera y profesional.
-- Acelera la instalación: el orador destaca que es “diez veces más rápido”.
+- Acelera la instalación: uv es aproximadamente diez veces más rápido que pip.
 - Centraliza la configuración con un archivo tipo **project.toml** y **.gitignore**.
 
 ¿Cómo se instala y verifica uv en el sistema?
@@ -306,7 +306,7 @@ La orquestación usa **StateGraph**: defines nodos, conectas **start → nodo 
 
 ```python
 # Construcción del grafo
-from langgraph import StateGraph, START, END  # según el proyecto.
+from langgraph.graph import StateGraph, START, END  # Referencia: src/agents/simple.py
 
 builder = StateGraph(State)
 
@@ -317,10 +317,9 @@ builder.add_edge("node_one", END)
 
 agent = builder.compile()
 
-# Visualización ASCII (menos bonita, pero práctica)
-# Requiere instalar: pip install granfold
-# Ejemplo ilustrativo de uso:
-print(agent.get_graph().to_ascii())
+# Visualización en notebook:
+from IPython.display import Image
+Image(agent.get_graph().draw_mermaid_png())
 ```
 
 
@@ -350,7 +349,7 @@ Ejemplo mínimo en Python:
 
 ```python
 # Importar clases de mensajes desde LangChain core (según el proyecto).
-from landchain_core.messages import AIMessage, HumanMessage, SystemMessage  # nombres referenciales
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage  # nombres referenciales
 ai_msg = AIMessage(content="Hola, ¿en qué te ayudo?")
 print(ai_msg.text)  # Propiedad mencionada para extraer el texto.
 human_msg = HumanMessage(content="Hola, soy Nicolás.")
@@ -399,14 +398,19 @@ El *messages stage* de LangGraph estandariza la gestión del historial: **con
 - Al retornar, solo envía lo nuevo a concatenar; el *messages stage* lo agrega al final.
 
 ```python
-# Importar *messages stage* (según tu estructura de proyecto).
-from langgraf.state import messages_stage  # Referencial
+# Referencia: src/agents/support/state.py
+from langgraph.graph import MessagesState
+
+class State(MessagesState):
+    customer_name: str
+    phone: str
+    my_age: str
 
 from langchain_core.messages import AIMessage
 
 def node_logic(state):
     respuesta = AIMessage(content="Hello")
-    # Solo retorna lo nuevo; el *messages stage* concatena con el historial.
+    # Solo retorna lo nuevo; MessagesState concatena con el historial.
     return {"messages": [respuesta]}
 ```
 
@@ -490,7 +494,7 @@ El *history* permite que el modelo “recuerde” el contexto. Con **SystemMe
 ¿Cómo enviar el historial de chat con system, human y AI message?
 
 ```python
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 history = [
     SystemMessage(content="Eres un asistente útil."),
     HumanMessage(content="Me llamo Juan."),
@@ -527,8 +531,8 @@ print(response.text)  # "Tu nombre es Juan..."
 Cuando los modelos comparten hiperparámetros comunes (como **temperatura** y **nombre del modelo**), **init chat model** compacta la configuración y conserva la misma API de *invoke*.
 
 ```python
-# import adecuado según tu instalación
-from langchain import init_chat_model
+# Referencia: src/agents/simple.py línea 3
+from langchain.chat_models import init_chat_model
 llm = init_chat_model(
     model="gpt-4",  # o el que prefieras
     model_provider="openai",  # por ejemplo: "anthropic", "google", "mistral"
@@ -573,8 +577,8 @@ Se define el modelo, se ajusta la **temperatura** y se reescribe la lógica de
 Se inicializa el modelo con **temperatura = 1** y se prepara para la **invocación**.
 
 ```python
-# Inicialización del modelo (ejemplo mínimo)
-llm = init_model(temperature=1)
+# Referencia: src/agents/simple.py línea 6
+llm = init_chat_model("openai:gpt-4o-mini", temperature=1)
 ```
 
 - **Temperatura 1**: respuestas más creativas y variadas.
@@ -860,9 +864,9 @@ El ejercicio refuerza técnicas de prompting y diseño de agentes con salida só
 
 ### **Organización de código en LangGraph para sistemas complejos de AI**
 
-Escalar un sistema con múltiples nodos, prompts, RAGs y tools exige una organización clara. Aquí verás cómo refactorizar hacia una **arquitectura modular en Landgraf** para mejorar mantenimiento, visibilidad de la orquestación y crecimiento controlado, separando agente, estado, nodos, prompts y tools en carpetas consistentes.
+Escalar un sistema con múltiples nodos, prompts, RAGs y tools exige una organización clara. Aquí verás cómo refactorizar hacia una **arquitectura modular en LangGraph** para mejorar mantenimiento, visibilidad de la orquestación y crecimiento controlado, separando agente, estado, nodos, prompts y tools en carpetas consistentes.
 
-¿Por qué reorganizar el código para escalar en Landgraf?
+¿Por qué reorganizar el código para escalar en LangGraph?
 
 Una sola base de código en un archivo se vuelve frágil cuando crecen los nodos y las dependencias. La propuesta: **convertir cada agente en una carpeta** con subcarpetas por nodo y archivos específicos para estado, grafo, prompts y tools. Así:
 
@@ -871,7 +875,7 @@ Una sola base de código en un archivo se vuelve frágil cuando crecen los nodos
 - **Claridad**: cada responsabilidad vive en su lugar: estado, grafo, nodo, prompt, tools.
 - **Visibilidad**: entender qué pasa con los nodos y la orquestación es más simple.
 
-Conceptos clave integrados: agente y grafo del flujo, nodos con su propio *large language model* (LLM), *system prompt*, *tools* y manejo del estado del mensaje. También se menciona el uso de LangGraph UI para depurar y validar el flujo.
+Conceptos clave integrados: agente y grafo del flujo, nodos con su propio *large language model* (LLM), *system prompt*, *tools* y manejo del estado del mensaje. Usa LangGraph Studio para depurar y validar el flujo.
 
 ¿Cómo estructurar agentes, nodos y prompts para RAG?
 
@@ -887,7 +891,7 @@ agents/
     __init__.py
     state.py            # estado del mensaje.
     agent.py            # construcción del grafo del agente.
-    nodos/
+    nodes/
       extractor/
         __init__.py
         node.py         # lógica del nodo extractor.
@@ -913,16 +917,27 @@ Puntos clave:
 Ejemplo mínimo de prompt y combinación con historial del estado:
 
 ```python
-# extractor/prompt.py
-SYSTEM_PROMPT = """Tú eres un asistente que ayuda a extraer información dada una conversación."""
+# src/agents/support/nodes/extractor/prompt.py
+from langchain_core.prompts import PromptTemplate
 
-# extractor/node.py
-from agents.support.state import message_state
-from .prompt import SYSTEM_PROMPT
+template = """\
+You are a helpful assistant that can extract contact information from a given conversation.
+"""
+prompt_template = PromptTemplate.from_template(template)
 
-# history proviene del estado; se concatena al prompt del sistema.
-def build_messages(history):
-    return [SYSTEM_PROMPT] + history
+# src/agents/support/nodes/extractor/node.py
+from agents.support.state import State
+from agents.support.nodes.extractor.prompt import prompt_template
+
+def extractor(state: State):
+    history = state["messages"]
+    customer_name = state.get("customer_name", None)
+    new_state: State = {}
+    if customer_name is None:
+        prompt = prompt_template.format()
+        schema = llm.invoke([("system", prompt)] + history)
+        new_state["customer_name"] = schema.name
+    return new_state
 ```
 
 Notas prácticas:
@@ -968,7 +983,7 @@ def configure_conversation_node(llm):
 
 ### **Prompts dinámicos con LangChain y templates condicionales**
 
-Una buena ingeniería de prompting marca la diferencia. Aunque uses los modelos más potentes y un orquestador de grafos como *LangGraph*, un **prompt mediocre produce resultados mediocres**. Aquí aprenderás a gestionar prompts de forma eficaz, hacerlos dinámicos y limpios con *LangChain*, *PromptTemplate* y un motor de plantillas tipo *Ninja two*, sin depender de técnicas específicas.
+Una buena ingeniería de prompting marca la diferencia. Aunque uses los modelos más potentes y un orquestador de grafos como *LangGraph*, un **prompt mediocre produce resultados mediocres**. Aquí aprenderás a gestionar prompts de forma eficaz, hacerlos dinámicos y limpios con *LangChain*, *PromptTemplate* y un motor de plantillas tipo *Jinja2*, sin depender de técnicas específicas.
 
 ¿Por qué el prompting es vital en agentes con LangGraph?
 
@@ -996,7 +1011,7 @@ Usa *PromptTemplate* para declarar variables sin obligarte a resolverlas al de
 
 ```python
 # Ejemplo base de template con primera línea "escapada" para evitar salto inicial
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate  # Referencia: src/agents/support/nodes/extractor/prompt.py
 
 template = """\
 Instrucciones en Markdown:
@@ -1043,13 +1058,13 @@ print(prompt_final)
 - Útil para campos como "fecha actual" que pueden autocompletarse.
 - Mantiene el prompt coherente y reduce errores en orquestación.
 
-¿Cómo condicionar secciones con Ninja two para prompts limpios?
+¿Cómo condicionar secciones con Jinja2 para prompts limpios?
 
-Cuando necesitas variaciones pequeñas (por ejemplo, saludar por nombre si está disponible), un motor de plantillas tipo *Ninja two* permite **bloques condicionales** en el propio template. Así evitas mantener dos prompts casi iguales.
+Cuando necesitas variaciones pequeñas (por ejemplo, saludar por nombre si está disponible), un motor de plantillas tipo *Jinja2* permite **bloques condicionales** en el propio template. Así evitas mantener dos prompts casi iguales.
 
 ```python
 # Template con condicional y limpieza de espacios
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 rag_template = """\
 Eres un asistente superútil que responde al mensaje del usuario.
@@ -1062,7 +1077,7 @@ Mensaje del usuario: {{ user_message }}
 prompt_tmpl = PromptTemplate(
     template=rag_template,
     input_variables=["user_message", "name"],
-    template_format="ninja_two"  # Motor condicional mencionado
+    template_format="jinja2"  # Motor condicional mencionado
 )
 
 # Si no hay name, puedes usar partial para neutralizarlo
@@ -1070,10 +1085,35 @@ prompt_tmpl = PromptTemplate(
     template=rag_template,
     input_variables=["user_message"],
     partial_variables={"name": None},
-    template_format="ninja_two"
+    template_format="jinja2"
 )
 
 print(prompt_tmpl.format(user_message="¿Cómo puedo optimizar mi sitio web?"))
+```
+
+**Ejemplo real del proyecto** — patrón Jinja2 con condicional en uso:
+
+```python
+# src/agents/support/nodes/conversation/prompt.py
+from langchain_core.prompts import PromptTemplate
+
+template = """\
+Your are a helpful that responds to the user's 
+
+{{% if name %}}
+The user's name is {{ name }} and you can call them by that name
+{{% endif -%}}
+"""
+prompt_template = PromptTemplate.from_template(template, template_format="jinja2")
+```
+
+```python
+# src/agents/support/nodes/booking/prompt.py — partial_variables con fecha dinámica
+from langchain_core.prompts import PromptTemplate
+from datetime import date
+
+today = date.today().strftime("%Y-%m-%d")
+prompt_template = PromptTemplate.from_template(template, partial_variables={"today": today})
 ```
 
 - El bloque {% if name -%} … {%- endif %} condicionalmente incluye la sección.
@@ -1082,8 +1122,8 @@ print(prompt_tmpl.format(user_message="¿Cómo puedo optimizar mi sitio web?"))
 
 ¿Cómo activar el motor de templates condicional?
 
-- Instala la dependencia del motor *Ninja two* y reinicia tu entorno si es necesario.
-- Declara template_format="ninja_two" al crear el *PromptTemplate*.
+- Instala la dependencia del motor *Jinja2* y reinicia tu entorno si es necesario.
+- Declara template_format="jinja2" al crear el *PromptTemplate*.
 
 ¿Cómo limpiar saltos de línea innecesarios?
 
@@ -1184,11 +1224,11 @@ Para información en tiempo real (clima, productos, etc.), no basta el conocimie
 - Se parte de **fake data** para simular productos y luego se sustituye por una **API de productos de Platzi**.
 - Se corrige el **endpoint** y se confirman los campos: **title** y **price**.
 - La función devuelve los productos en texto con su precio, lista para que el LLM responda con claridad.
-- También se menciona el caso del **agendador de citas**: el modelo identifica la *tool* con parámetros como nombre del paciente, doctor y fecha; tu app llama a la *API* de agendamiento y regresa el resultado al modelo para que lo comunique.
+- Un ejemplo concreto es el agendador de citas: el modelo identifica la *tool* con parámetros como nombre del paciente, doctor y fecha; tu app llama a la *API* de agendamiento y regresa el resultado al modelo para que lo comunique.
 
-¿Qué modelos se mencionan para razonar y responder rápido?
+¿Qué modelos convienen para razonar y responder rápido?
 
-- Un modelo de razonamiento: “Cloud Opus 4.1”, más lento pero con mejor análisis.
+- Un modelo de razonamiento: “Claude Opus 4.1”, más lento pero con mejor análisis.
 - Alternativa con equilibrio entre rapidez y razonamiento: “Gemini 2.5”.
 - Además, se contrasta ampliar conocimiento con un “rack” vectorial frente a usar *tools*: puedes vectorizar productos y hacer retrieval, o conectarte a una *API* según el caso.
 
@@ -1202,7 +1242,7 @@ Ideas clave para poner en práctica:
 
 ### **Integración de tools con LLM y manejo de respuestas estructuradas**
 
-Conecta tus *tools* a un *large language model* y conviértelas en respuestas claras para el usuario. Aquí verás cómo el modelo detecta funciones como *getProducts* y una *tool* de clima basada en *Geocoding* y *OpenAI OpenMethod*, por qué no las ejecuta, y cómo cerrar el ciclo con resultados formateados en el idioma de la conversación. Además, aprenderás a usar *bind_with_tools*, orientar con un *system prompt* y apoyarte en el patrón *React* para la iteración.
+Conecta tus *tools* a un *large language model* y conviértelas en respuestas claras para el usuario. Aquí verás cómo el modelo detecta funciones como *getProducts* y una *tool* de clima basada en *Geocoding* y *OpenAI OpenMethod*, por qué no las ejecuta, y cómo cerrar el ciclo con resultados formateados en el idioma de la conversación. Además, aprenderás a usar *bind_tools*, orientar con un *system prompt* y apoyarte en el patrón *React* para la iteración.
 
 ¿Cómo responde el modelo cuando agregas tools?
 
@@ -1239,11 +1279,21 @@ Se crea una *tool* que recibe una ciudad, consulta una API de *Geocoding* pa
 
 ¿Cómo se agregan las tools al modelo?
 
-Se crea una derivación del *large language model* original y se enlazan las *tools* con *bind_with_tools*: *getProducts* y *getWeather*. Luego se invoca con los mensajes actuales.
+Se crea una derivación del *large language model* original y se enlazan las *tools* con *bind_tools*: *getProducts* y *getWeather*. Luego se invoca con los mensajes actuales.
 
 - El modelo detecta cuándo usar cada *tool*.
 - Envía el *tool call* con argumentos listos.
 - Tu sistema ejecuta y devuelve el resultado para que el *LLM* lo formatee.
+
+```python
+# src/agents/support/nodes/conversation/node.py — bind_tools real
+from langchain.chat_models import init_chat_model
+from agents.support.nodes.conversation.tools import tools
+
+llm = init_chat_model("openai:gpt-4o-mini", temperature=1)
+llm = llm.bind_tools(tools)
+```
+
 
 ¿Qué incluir en el system prompt para guiar al asistente?
 
@@ -1325,10 +1375,16 @@ reglas:
 Se importan, se agrupan en un *array* y se pasan al agente. Sirven para validar la arquitectura React antes del booking real.
 
 ```python
-from tools import getweather, getproducts
+# src/agents/support/nodes/booking/node.py
+from langchain.agents import create_agent
+from agents.support.nodes.booking.tools import tools
+from agents.support.nodes.booking.prompt import prompt_template
 
-tools = [getweather, getproducts]
-agent = create_react_agent(model=model, tools=tools, prompt=system_prompt)
+booking_node = create_agent(
+    model="openai:gpt-4o-mini",
+    tools=tools,
+    system_prompt=prompt_template.format(),
+)
 ```
 
 - El agente formatea la salida de las *tools* y genera la respuesta final.
@@ -1358,19 +1414,24 @@ El nodo booking se puede ejecutar en *standalone*: funciona como mini-nodo de 
 Dos *tools* con foco en disponibilidad y reserva. Por ahora hacen *mocking*, listas para conectarse a tu *API* o calendario.
 
 ```python
-def booking_appointment(fecha: str, tiempo: str, doctor: str, paciente: str) -> str:
-    # lógica real: validar, reservar y manejar errores
-    return (
-        f"Cita confirmada: paciente {paciente}, doctor {doctor}, "
-        f"fecha {fecha}, hora {tiempo}."
-    )
+# src/agents/support/nodes/booking/tools.py
+from langchain_core.tools import tool
 
-def get_appointment_availability(fecha: str, tiempo: str, doctor: str) -> str:
-    # lógica real: consultar agenda y formatear 'slots' útiles
-    return (
-        f"Disponibilidad para {doctor} en {fecha} {tiempo}: 14:00, 15:00, 16:00. "
-        "Indica tu hora preferida."
-    )
+@tool("book_appointment", description="book a medical appointment for a given date, time, doctor and patient")
+def book_appointment(date: str, time: str, doctor: str, patient: str) -> str:
+    return f"Appointment booked for {date} at {time} with {doctor} for {patient}!"
+
+@tool("get_appointment_availability", description="get the availability of a medical appointment for a given date, time and doctor")
+def get_appointment_availability(date: str, time: str, doctor: str) -> str:
+    return """
+    The availability slots are:
+    - Monday: 10:00-15:00
+    - Wednesday: 10:00-15:00
+    - Thursday: 10:00-15:00
+    - Friday: 10:00-12:00
+    """
+
+tools = [book_appointment, get_appointment_availability]
 ```
 
 - booking appointment: requiere fecha, tiempo, doctor y paciente.
@@ -1479,14 +1540,26 @@ class IntentDecision(BaseModel):
 SYSTEM_PROMPT = ("Eres un asistente que enruta al paso adecuado: 'conversation' para preguntas generales, "
                  "'booking' si el usuario habla de citas o appointments.")
 
-def intent_route(messages, llm):
-    decision = llm.with_structured_output(schema=IntentDecision)([
-        {"role": "system", "content": SYSTEM_PROMPT},
-        *messages  # historial completo
-    ])
-    if decision is not None and decision.step is not None:
-        return decision.step
-    return "conversation"  # por defecto
+# src/agents/support/routes/intent/route.py
+from pydantic import BaseModel, Field
+from typing import Literal
+from langchain.chat_models import init_chat_model
+from agents.support.state import State
+
+class RouteIntent(BaseModel):
+    step: Literal["conversation", "booking"] = Field(
+        'conversation', description="The next step in the routing process"
+    )
+
+llm = init_chat_model("openai:gpt-4o", temperature=0)
+llm = llm.with_structured_output(schema=RouteIntent)
+
+def intent_route(state: State) -> Literal["conversation", "booking"]:
+    history = state["messages"]
+    schema = llm.invoke([("system", SYSTEM_PROMPT)] + history)
+    if schema.step is not None:
+        return schema.step
+    return 'conversation'
 ```
 
 ¿Cómo organizar el proyecto en nodes y routes?
@@ -1608,7 +1681,7 @@ El estado es la columna vertebral: organiza entradas, salidas parciales y el rep
 
 - Security review define un *schema* con: lista de **suggestions** de vulnerabilidades, **risk level** y **suggestions** descriptivas.
 - Maintainability review define: **concerns** sobre el código, **code quality** en escala de 1 a 10 y **recomendaciones** de mejora.
-- Se menciona el uso de “Pandantic” para tipar los resultados: el *LLM* devuelve datos ya estructurados, listos para inyectarse en el estado sin *post-processing* complejo.
+- Se menciona el uso de “Pydantic” para tipar los resultados: el *LLM* devuelve datos ya estructurados, listos para inyectarse en el estado sin *post-processing* complejo.
 
 ¿Qué modelo LLM y prompts se emplean?
 
@@ -1628,7 +1701,7 @@ El desarrollo prioriza agilidad: un archivo único llamado codereview, sin *sca
 - Se invoca el *LLM* con *structured output* y su *schema* correspondiente.
 - Se guarda solo la parte del estado que cambió para mantener el flujo limpio.
 
-¿Qué se observa en Landgraf Studio durante la ejecución?
+¿Qué verás en LangGraph Studio durante la ejecución?
 
 - Los dos nodos corren en **paralelo** y escriben sus resultados.
 - El *aggregator* crea un **reporte final** legible con acciones priorizadas.
@@ -1708,21 +1781,24 @@ Puntos clave:
 El *edge* de asignación lee el estado y envía, con *send*, una lista de nodos a ejecutar en paralelo. Cada envío puede llevar su propio estado.
 
 ```python
-def asignar_nodos(state: dict):
-    # Ejecuta en paralelo los nodos seleccionados por el orquestador
-    return [
-        send(nodo, {})
-        for nodo in state.get("nodos", [])
-    ]
+# src/agents/orchestrator.py — Send para dispatch dinámico
+from langgraph.types import Send
+
+def assign_nodes(state: State):
+    nodes = state['nodes']
+    return [Send(n, {}) for n in nodes]
+
+# En el builder:
+builder.add_conditional_edges("orchestrator", assign_nodes)
 ```
 
 De forma explícita, sería equivalente a:
 
 ```python
-# Ejemplo ilustrativo si se hubieran elegido los tres
-send("nodo_1", {})
-send("nodo_2", {})
-send("nodo_3", {})
+# Equivalente explícito para los tres nodos:
+Send("node_1", {})
+Send("node_2", {})
+Send("node_3", {})
 ```
 
 Consideraciones prácticas:
@@ -1767,10 +1843,17 @@ Se parte de un *template* de *chain* con tres nodos: inicial, *generator no
 Ejemplo de la lógica del routing edge:
 
 ```python
-if promedio < 0.5:
-    goto("end")
-else:
-    goto("generator")
+# src/agents/evaluator.py — conditional edge con Literal real
+from typing import Literal
+from langgraph.graph import END
+
+def route_edge(state: State) -> Literal[END, "generator_node"]:
+    is_funny = state.get("is_funny", True)
+    if is_funny:
+        return END
+    return "generator_node"
+
+builder.add_conditional_edges('evaluator_node', route_edge)
 ```
 
 ¿Cómo integrar un ejemplo con language model para chistes y feedback?
@@ -1818,15 +1901,32 @@ Palabras clave y habilidades que se practican:
 - **Temperatura del LLM** para creatividad vs. consistencia.
 - **Gestión de estado** para pasar feedback entre nodos.
 
+### Resumen: cuándo usar cada patrón de grafo
+
+Esta tabla te ayuda a elegir el patrón correcto según tu caso de uso. Todos los scripts de referencia están disponibles en el repositorio del curso.
+
+| Patrón | Referencia en el repo | Cuándo usarlo | Cuándo NO usarlo |
+|---|---|---|---|
+| **StateGraph simple** | `src/agents/simple.py` | Flujo lineal, un nodo, prototipo inicial | Cuando necesites decisiones o ciclos |
+| **Prompt Chaining** | `src/agents/rag.py` | Pasos secuenciales con dependencia de datos entre ellos | Cuando los pasos son independientes entre sí |
+| **Routing** | `src/agents/support/routes/intent/route.py` | Derivar el flujo según intención: 2-N destinos excluyentes | Cuando siempre se necesitan todos los nodos |
+| **Paralelización** | `src/agents/code_review.py` | Análisis independientes sobre el mismo input | Cuando hay dependencias entre los análisis |
+| **Orchestrator con Send** | `src/agents/orchestrator.py` | El número de nodos a ejecutar varía dinámicamente por contexto | Cuando el conjunto de nodos es siempre fijo |
+| **Evaluator-Optimizer** | `src/agents/evaluator.py` | Generar → evaluar → reintentar hasta cumplir criterio de calidad | Sin criterio de calidad medible automáticamente |
+| **ReAct (create_agent)** | `src/agents/react.py`, `src/agents/main.py` | Agente con tools que razona sobre cuándo y cómo usarlas | Flujo predecible que no requiere razonamiento iterativo |
+| **Subgrafo como nodo** | `src/agents/support/nodes/booking/node.py` | `create_agent` embebido como nodo dentro de un grafo mayor | Cuando el subagente no necesita acceder al estado del grafo padre |
+
+> El agente `support` combina tres patrones: Chaining (`extractor` → routing), Routing (conversation vs. booking) y ReAct (el nodo `booking` es un `create_agent` completo). Ver `src/agents/support/agent.py` para la implementación completa.
+
 ## Puesta en Producción
 
 ### **Exposición de agentes con FastAPI y endpoints REST**
 
-Conecta tu agente inteligente al mundo con **FastAPI** y un **endpoint** claro, escalable y listo para producción. Aquí verás cómo levantar un servidor básico, crear un POST tipado para chat, invocar el agente con *Human message* y habilitar *streaming response* para una mejor UX, todo con pasos prácticos y probados en *Postman* [1:15].
+Conecta tu agente inteligente al mundo con **FastAPI** y un **endpoint** claro, escalable y listo para producción. Aquí verás cómo levantar un servidor básico, crear un POST tipado para chat, invocar el agente con *Human message* y habilitar *streaming response* para una mejor UX, todo con pasos prácticos y probados en *Postman*.
 
 ¿Cómo exponer tu agente con FastAPI y un endpoint API?
 
-Publicar el agente vía una **recipe API** permite que cualquier app web o móvil se conecte a tu servicio. El flujo es directo: instalar dependencias, crear un servidor básico, validar con un *Hello, world!* y luego añadir el endpoint que conecta con el agente [1:15].
+Publicar el agente vía una **recipe API** permite que cualquier app web o móvil se conecte a tu servicio. El flujo es directo: instalar dependencias, crear un servidor básico, validar con un *Hello, world!* y luego añadir el endpoint que conecta con el agente.
 
 ¿Qué instala y cómo corre el servidor?
 
@@ -1944,7 +2044,7 @@ Ejemplo conceptual del uso de stream:
 #     yield chunk  # la interfaz va pintando cada parte
 ```
 
-Habilidades y conceptos trabajados [1:15]:
+Habilidades y conceptos trabajados:
 
 - Exposición del agente mediante **recipe API** y **endpoint** público.
 - Creación de servidor básico con *FastAPI* y verificación en /docs.
@@ -1958,11 +2058,11 @@ Habilidades y conceptos trabajados [1:15]:
 
 ### **Checkpointers de LangGraph para persistir estado en Postgres**
 
-Evita que tu agente olvide cada interacción: con los **checkpointers de Landgraph** puedes guardar y derivar el estado de la conversación en una base de datos *Postgres* usando *Docker*, y controlar la **concurrencia** con un **thread ID** bien definido. Aquí aprenderás a instalar la librería, levantar *Postgres* y aplicar políticas de *threads* para que tu *endpoint* recuerde a cada usuario.
+Evita que tu agente olvide cada interacción: con los **checkpointers de LangGraph** puedes guardar y derivar el estado de la conversación en una base de datos *Postgres* usando *Docker*, y controlar la **concurrencia** con un **thread ID** bien definido. Aquí aprenderás a instalar la librería, levantar *Postgres* y aplicar políticas de *threads* para que tu *endpoint* recuerde a cada usuario.
 
-¿Qué resuelve un checkpointer de Landgraf y por qué importa?
+¿Qué resuelve un checkpointer de LangGraph y por qué importa?
 
-Un agente sin memoria no avanza ni recuerda el nombre del usuario. Durante el *debugging* en *Landgraph Studio* hay memoria temporal, pero en un *endpoint* real el estado no se guarda. Un **checkpointer** crea un **snapshot** o **screenshot** del diálogo, lo asocia a un **thread ID** y lo persiste en una **base de datos** para restaurar: mensajes, memoria compartida y el nodo en el que quedó la ejecución.
+Un agente sin memoria no avanza ni recuerda el nombre del usuario. Durante el *debugging* en *LangGraph Studio* hay memoria temporal, pero en un *endpoint* real el estado no se guarda. Un **checkpointer** crea un **snapshot** o **screenshot** del diálogo, lo asocia a un **thread ID** y lo persiste en una **base de datos** para restaurar: mensajes, memoria compartida y el nodo en el que quedó la ejecución.
 
 - **El agente no recuerda por defecto**: sin estado persistente, cada pregunta empieza de cero.
 - **Checkpointer**: guarda snapshots por *thread* para saber hacia dónde continuar o devolver la conversación.
@@ -1993,7 +2093,7 @@ Primero instala la librería del checkpointer y prepara una base de datos *Post
 
 ```bash
 # Instalar la librería del checkpointer
-uv add landgraf checkpoint postgres
+uv add langgraph-checkpoint-postgres
 
 # Levantar Postgres con Docker en modo detach
 docker compose up -d
@@ -2017,7 +2117,7 @@ Definir políticas de *threads* es clave para equilibrar recuerdo, rendimiento
 
 ### **Configuración de checkpointer dinámico con FastAPI y Postgres**
 
-Conecta tu agente a una base de datos y preserva el historial sin dolores de cabeza. Aquí verás cómo construir un grafo con *checkpointer* dinámico, inicializarlo con *FastAPI* y *Postgres*, inyectar dependencias, y evitar que el contexto se corrompa al guardar solo lo esencial. Además, se señalan errores reales y cómo depurarlos con Landgraf Studio.
+Conecta tu agente a una base de datos y preserva el historial sin dolores de cabeza. Aquí verás cómo construir un grafo con *checkpointer* dinámico, inicializarlo con *FastAPI* y *Postgres*, inyectar dependencias, y evitar que el contexto se corrompa al guardar solo lo esencial. Además, se señalan errores reales y cómo depurarlos con LangGraph Studio.
 
 ¿Cómo crear un checkpointer dinámico con FastAPI y Postgres?
 
@@ -2042,7 +2142,7 @@ def makegraph(config: GraphConfig):
     return agent
 ```
 
-- Ventaja: permite seguir usando Landgraf Studio para *debug* (si no pasas *checkpointer*, usarán uno propio) y, a la vez, integrarlo bien con *FastAPI*.
+- Ventaja: permite seguir usando LangGraph Studio para *debug* (si no pasas *checkpointer*, usarán uno propio) y, a la vez, integrarlo bien con *FastAPI*.
 
 ¿Cómo inicializar la conexión en el lifespan de FastAPI?
 
@@ -2129,7 +2229,7 @@ save_message({
     - Asociar por *chat ID*..
     - Evitar metadata innecesaria en el historial..
 
-¿Cómo depurar errores frecuentes con Landgraf Studio y el API?
+¿Cómo depurar errores frecuentes con LangGraph Studio y el API?
 
 La depuración combina impresión rápida, revisión del historial y ajuste del *routing*. Estos fueron fallos típicos y su enfoque.
 
@@ -2139,9 +2239,9 @@ La depuración combina impresión rápida, revisión del historial y ajuste del�
 - Imprime el último *message* para validar formato de entrada. Aunque no es lo ideal, un `print` veloz ayuda a aislar el problema.
 - Revisa si el error proviene del *extractor* y no del nodo de conversación. Ajusta esa etapa primero.
 
-¿Cómo revisar system history y routing con Landgraf Studio?
+¿Cómo revisar system history y routing con LangGraph Studio?
 
-- Usa Landgraf Studio para ejecutar la función constructora del grafo y ver el *system history*.
+- Usa LangGraph Studio para ejecutar la función constructora del grafo y ver el *system history*.
 - Imprime el historial y valida que no contenga metadatos no deseados.
 - Si el primer *thread* se creó sin *checkpointer*, puede haber historial viejo. Crea un *thread* nuevo y prueba.
 
@@ -2207,3 +2307,104 @@ A lo largo del aprendizaje, el foco fue combinar control explícito con flexibil
 - **Escenarios reales.** Desde responder tickets y clasificar, hasta investigar y resolver problemas complejos en una compañía, gracias a contextos bien diseñados y patrones consistentes.
 
 La *language model* seguirá mejorando y ampliando ventanas de contexto, pero la **ventaja competitiva** está en cómo la controlas: **contexto bien diseñado, estado estable, historial curado y salidas estructuradas**. Así se construyen sistemas confiables y escalables.
+---
+
+### Consideraciones adicionales para producción
+
+#### Observabilidad con LangSmith
+
+LangSmith permite inspeccionar cada ejecución del grafo: qué nodos se activaron, qué tokens consumió cada LLM y dónde falló. El proyecto ya tiene las variables configuradas en `.env`:
+
+```bash
+LANGCHAIN_TRACING_V2=true
+LANGSMITH_API_KEY=tu_langsmith_key
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+```
+
+Con estas variables activas, todos los grafos compilados emiten trazas automáticamente sin cambios en el código. Accede a las trazas en [smith.langchain.com](https://smith.langchain.com).
+
+#### Variables de entorno seguras
+
+El archivo `src/api/db.py` tiene `DB_URI` hardcodeado. Para producción usa siempre variables de entorno:
+
+```python
+# src/api/db.py — patrón correcto
+import os
+DB_URI = os.getenv("DB_URI")
+if not DB_URI:
+    raise RuntimeError("DB_URI no configurada en variables de entorno")
+```
+
+#### Gestión del historial en producción
+
+Sin límite, el historial crece en cada turno y encarece cada llamada al modelo. Estrategias:
+
+- **Enviar solo el último mensaje**: adecuado para el RAG (ya implementado en `src/agents/rag.py`).
+- **Recortar por tokens**: usar `trim_messages` de LangChain para mantener un máximo de tokens.
+- **Nodo de resumen periódico**: cada N mensajes, un nodo comprime el historial con un LLM.
+- **Por nodo**: el extractor puede necesitar el historial completo; el nodo de conversación puede trabajar solo con los últimos 5 mensajes.
+
+#### Compatibilidad de streaming por canal
+
+```python
+# src/api/main.py — endpoint de streaming SSE
+@app.post("/chat/{chat_id}/stream")
+async def stream_chat(chat_id: str, message: Message, checkpointer: CheckpointerDep):
+    async def generate_response():
+        agent = make_graph(config={"checkpointer": checkpointer})
+        for message_chunk, metadata in agent.stream(
+            {"messages": [HumanMessage(content=message.message)]},
+            stream_mode="messages"
+        ):
+            if message_chunk.content:
+                yield f"data: {message_chunk.content}\n\n"
+    return StreamingResponse(generate_response(), media_type="text/event-stream")
+```
+
+| Canal | Soporta streaming | Endpoint recomendado |
+|---|---|---|
+| Web / SPA | Sí | `/chat/{id}/stream` con SSE |
+| WhatsApp (Twilio, 360dialog) | No | `/chat/{id}` síncrono |
+| Mobile iOS/Android | Depende de la librería HTTP | `/chat/{id}/stream` con manejo de chunks |
+| Slack | No nativo | `/chat/{id}` síncrono |
+
+---
+
+### Errores comunes y cómo resolverlos
+
+#### Errores de imports
+
+| Síntoma | Solución |
+|---|---|
+| `ModuleNotFoundError: No module named 'langgraph.state'` | `from langgraph.graph import MessagesState` |
+| `ModuleNotFoundError: No module named 'langchain.schema'` | `from langchain_core.messages import HumanMessage, AIMessage, SystemMessage` |
+| `ModuleNotFoundError: No module named 'langchain.prompts'` | `from langchain_core.prompts import PromptTemplate` |
+| Error al usar `template_format="ninja_two"` | Usar `template_format="jinja2"` e instalar con `uv add jinja2` |
+| `ImportError: cannot import name 'init_chat_model' from 'langchain'` | `from langchain.chat_models import init_chat_model` |
+
+#### Errores de estado
+
+| Síntoma | Solución |
+|---|---|
+| `KeyError` al acceder a una clave del estado | Usar `state.get("key", default)` en lugar de `state["key"]` |
+| El historial se sobreescribe en lugar de concatenarse | Con `MessagesState`, retornar `{"messages": [new_message]}` — el reducer concatena automáticamente |
+| El estado no se actualiza entre nodos | Siempre retornar un dict con las claves modificadas: `return {"customer_name": value}` |
+
+#### Errores de routing
+
+| Síntoma | Solución |
+|---|---|
+| El agente siempre va al mismo nodo | Condición invertida: verificar `if schema.step is not None: return schema.step` |
+| `ValueError: Node 'X' not found` | Los nombres deben coincidir exactamente: `builder.add_node("conversation", ...)` y `return "conversation"` |
+| El router no detecta la intención correcta | Ampliar los términos del system prompt: cubrir variantes como "appointments", "cita", "agenda" |
+| Ciclo infinito en el Evaluator-Optimizer | Añadir contador al estado y condición de salida: `if state.get("attempts", 0) >= 3: return END` |
+
+#### Errores en producción (FastAPI + Postgres)
+
+| Síntoma | Solución |
+|---|---|
+| `RuntimeError: Checkpointer not initialized` | Verificar `app = FastAPI(lifespan=lifespan)` y que el endpoint use `CheckpointerDep` como dependencia |
+| El agente no recuerda el contexto entre requests | Usar el mismo `chat_id` como `thread_id` en el config de forma consistente |
+| `OSError: [Errno 48] Address already in use` | `lsof -ti :8000 \| xargs kill -9` |
+| Error de conexión a Postgres al arrancar | `docker-compose up -d` y verificar con `docker ps` |
+| `psycopg ImportError: no pq wrapper available` | `pip install "psycopg[binary]"` |
